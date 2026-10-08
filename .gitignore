@@ -1,3 +1,5 @@
+# Local Qdrant database
+data/qdrant/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

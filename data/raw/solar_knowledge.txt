@@ -1,0 +1,23 @@
+Solar Photovoltaic System Fundamentals
+
+Solar photovoltaic systems convert sunlight into electrical energy using photovoltaic modules.
+
+Solar irradiance is the power of solar radiation received per unit area and is commonly expressed in watts per square metre (W/m²).
+
+Global Horizontal Irradiance (GHI) represents the total solar radiation received on a horizontal surface.
+
+Direct Normal Irradiance (DNI) represents the amount of solar radiation received directly from the direction of the sun.
+
+Diffuse Horizontal Irradiance (DHI) represents solar radiation that reaches a surface after being scattered by the atmosphere.
+
+Cloud cover can significantly reduce solar irradiance reaching photovoltaic modules and therefore reduce expected energy generation.
+
+Photovoltaic system performance is affected by irradiance, temperature, shading, soiling, equipment efficiency, inverter performance and system availability.
+
+A simplified estimate of photovoltaic generation can be calculated using installed capacity, an irradiance factor and an assumed system efficiency.
+
+For operational monitoring, measured generation should be compared with expected generation to identify performance deviations.
+
+A significant deviation between expected and actual generation may require investigation of weather conditions, shading, soiling, inverter status, equipment availability or other operational factors.
+
+AI-based decision support should distinguish between measured observations, calculated values and inferred causes. Recommendations involving operational risk should be subject to appropriate human review.

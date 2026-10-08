@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+qdrant-client
+pymupdf
+sentence-transformers
+httpx
+pytest
+pytest-asyncio
