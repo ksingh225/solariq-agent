@@ -71,3 +71,10 @@ async def test_assess_solar_conditions_combines_weather_and_estimate(
     assert result["estimate"]["estimated_power_kw"] == 2.8
     assert result["estimate"]["model_type"] == "simplified_engineering_estimate"
     assert len(result["limitations"]) >= 1
+@pytest.mark.asyncio
+async def test_assess_solar_conditions_rejects_zero_capacity():
+    with pytest.raises(
+        ValueError,
+        match="capacity_kw must be greater than zero",
+    ):
+        await tools.assess_solar_conditions(capacity_kw=0)

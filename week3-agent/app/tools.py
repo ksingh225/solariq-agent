@@ -1,4 +1,13 @@
+
+from pathlib import Path
+import sys
 from typing import Any
+
+
+# Make the repository root available for the Week 1 RAG package.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 
 def get_solar_knowledge(query: str, top_k: int = 3) -> dict[str, Any]:
@@ -28,6 +37,9 @@ def estimate_solar_output(
     efficiency: float = 0.80,
 ) -> dict[str, Any]:
     """Use the existing deterministic Week 2 generation estimate."""
+    if capacity_kw <= 0:
+        raise ValueError("capacity_kw must be greater than zero")
+
     from solar_analytics import estimate_solar_generation
 
     return estimate_solar_generation(
@@ -42,6 +54,9 @@ async def assess_solar_conditions(
     efficiency: float = 0.80,
 ) -> dict[str, Any]:
     """Combine current weather with a deterministic solar output estimate."""
+    if capacity_kw <= 0:
+        raise ValueError("capacity_kw must be greater than zero")
+
     weather = await get_live_solar_weather()
 
     irradiance_wm2 = weather["shortwave_radiation_wm2"]
