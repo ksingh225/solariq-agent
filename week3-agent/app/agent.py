@@ -1,5 +1,8 @@
 
+import importlib.util
 import os
+import sys
+from pathlib import Path
 
 from dotenv import load_dotenv
 from pydantic_ai import Agent, ModelRetry
@@ -12,10 +15,27 @@ from tools import (
     get_solar_knowledge,
 )
 
-# Load configuration from the repository's local .env file.
+# Load the repository's local .env file.
 load_dotenv()
 
-MODEL_NAME = os.getenv("SOLARIQ_MODEL", "test")
+# Load Week 6 configuration explicitly, avoiding ambiguous module imports.
+APP_DIR = Path(__file__).resolve().parent
+REPO_ROOT = APP_DIR.parents[1]
+CONFIG_PATH = (
+    REPO_ROOT / "week6-production-readiness" / "app" / "config.py"
+)
+
+SPEC = importlib.util.spec_from_file_location(
+    "solariq_week6_config", CONFIG_PATH
+)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError("Unable to load SolarIQ Week 6 configuration.")
+
+CONFIG_MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = CONFIG_MODULE
+SPEC.loader.exec_module(CONFIG_MODULE)
+
+MODEL_NAME = CONFIG_MODULE.get_settings().solariq_model
 
 
 solar_agent = Agent(
