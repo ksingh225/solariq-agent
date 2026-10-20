@@ -60,3 +60,18 @@ def test_caps_irradiance_factor_at_one():
 def test_rejects_invalid_inputs(kwargs):
     with pytest.raises(ValueError):
         estimate_solar_generation(**kwargs)
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"capacity_kw": float("nan"), "irradiance_wm2": 500},
+        {"capacity_kw": float("inf"), "irradiance_wm2": 500},
+        {"capacity_kw": 5, "irradiance_wm2": float("nan")},
+        {"capacity_kw": 5, "irradiance_wm2": float("inf")},
+        {"capacity_kw": 5, "irradiance_wm2": 500, "efficiency": float("nan")},
+        {"capacity_kw": 5, "irradiance_wm2": 500, "efficiency": float("inf")},
+    ],
+)
+def test_rejects_non_finite_inputs(kwargs):
+    with pytest.raises(ValueError):
+        estimate_solar_generation(**kwargs)

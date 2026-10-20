@@ -1,4 +1,8 @@
+
 """Simplified solar generation analytics."""
+
+import math
+
 
 def estimate_solar_generation(
     capacity_kw: float,
@@ -9,6 +13,18 @@ def estimate_solar_generation(
 
     This is a simplified engineering estimate, not a certified forecast.
     """
+    inputs = {
+        "capacity_kw": capacity_kw,
+        "irradiance_wm2": irradiance_wm2,
+        "efficiency": efficiency,
+    }
+
+    for name, value in inputs.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{name} must be a finite number")
+        if not math.isfinite(value):
+            raise ValueError(f"{name} must be a finite number")
+
     if capacity_kw <= 0:
         raise ValueError("capacity_kw must be greater than zero")
 

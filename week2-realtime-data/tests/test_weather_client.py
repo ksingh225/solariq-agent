@@ -88,3 +88,27 @@ async def test_fetch_solar_weather_timeout():
     ):
         with pytest.raises(httpx.TimeoutException):
             await weather_client.fetch_solar_weather()
+
+@pytest.mark.asyncio
+async def test_fetch_solar_weather_rejects_null_radiation():
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "latitude": 17.385,
+        "longitude": 78.4867,
+        "timezone": "Asia/Kolkata",
+        "current": {
+            "time": "2026-10-10T12:00",
+            "temperature_2m": 32.0,
+            "cloud_cover": 20,
+            "shortwave_radiation": None,
+        },
+    }
+    mock_response.raise_for_status.return_value = None
+
+    with patch.object(
+        httpx.AsyncClient, "get", new_callable=AsyncMock
+    ) as mock_get:
+        mock_get.return_value = mock_response
+
+        with pytest.raises(ValueError, match="(?i)invalid"):
+            await weather_client.fetch_solar_weather()

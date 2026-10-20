@@ -2,6 +2,7 @@
 """Async client for fetching real-time weather and solar data from Open-Meteo."""
 
 import logging
+import math
 import time
 
 import httpx
@@ -35,6 +36,9 @@ async def fetch_solar_weather(
             response.raise_for_status()
             data = response.json()
 
+        if not isinstance(data, dict):
+            raise ValueError("Open-Meteo response must be a JSON object")
+
         current = data.get("current")
         if not isinstance(current, dict):
             raise ValueError("Open-Meteo response has no valid 'current' data")
@@ -44,9 +48,31 @@ async def fetch_solar_weather(
             "cloud_cover",
             "shortwave_radiation",
         )
-        missing = [field for field in required_fields if field not in current]
+
+        missing = [
+            field for field in required_fields
+            if field not in current
+        ]
         if missing:
             raise ValueError(f"Missing current weather fields: {missing}")
+
+        invalid = [
+            field
+            for field in required_fields
+            if isinstance(current[field], bool)
+            or not isinstance(current[field], (int, float))
+            or not math.isfinite(current[field])
+        ]
+        if invalid:
+            raise ValueError(f"Invalid current weather fields: {invalid}")
+
+        if not 0 <= current["cloud_cover"] <= 100:
+            raise ValueError("Invalid current weather field: cloud_cover")
+
+        if current["shortwave_radiation"] < 0:
+            raise ValueError(
+                "Invalid current weather field: shortwave_radiation"
+            )
 
         result = {
             "latitude": data.get("latitude"),
