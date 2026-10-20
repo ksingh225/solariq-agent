@@ -78,3 +78,16 @@ async def test_assess_solar_conditions_rejects_zero_capacity():
         match="capacity_kw must be greater than zero",
     ):
         await tools.assess_solar_conditions(capacity_kw=0)
+
+
+@pytest.mark.asyncio
+async def test_assess_solar_conditions_propagates_weather_timeout(
+    monkeypatch,
+):
+    async def failing_weather():
+        raise TimeoutError("Weather request timed out")
+
+    monkeypatch.setattr(tools, "get_live_solar_weather", failing_weather)
+
+    with pytest.raises(TimeoutError, match="Weather request timed out"):
+        await tools.assess_solar_conditions(capacity_kw=5)

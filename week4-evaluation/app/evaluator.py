@@ -15,10 +15,50 @@ def load_evaluation_cases() -> list[dict[str, Any]]:
     if not isinstance(cases, list):
         raise ValueError("Evaluation dataset must be a JSON array.")
 
-    for case in cases:
-        for field in ("id", "scenario", "input", "expected_behaviors"):
+    seen_ids = set()
+    required_fields = ("id", "scenario", "input", "expected_behaviors")
+
+    for index, case in enumerate(cases):
+        if not isinstance(case, dict):
+            raise ValueError(
+                f"Evaluation case at index {index} must be a JSON object."
+            )
+
+        for field in required_fields:
             if field not in case:
-                raise ValueError(f"Evaluation case is missing field: {field}")
+                raise ValueError(
+                    f"Evaluation case is missing field: {field}"
+                )
+
+        for field in ("id", "scenario", "input"):
+            if not isinstance(case[field], str) or not case[field].strip():
+                raise ValueError(
+                    f"Evaluation case field '{field}' must be a non-empty string."
+                )
+
+        case_id = case["id"]
+        if case_id in seen_ids:
+            raise ValueError(f"Duplicate evaluation case ID: {case_id}")
+        seen_ids.add(case_id)
+
+        behaviors = case["expected_behaviors"]
+        if (
+            not isinstance(behaviors, list)
+            or not behaviors
+            or any(
+                not isinstance(behavior, str) or not behavior.strip()
+                for behavior in behaviors
+            )
+        ):
+            raise ValueError(
+                "Evaluation case field 'expected_behaviors' must be "
+                "a non-empty list of non-empty strings."
+            )
+
+        if len(behaviors) != len(set(behaviors)):
+            raise ValueError(
+                f"Evaluation case '{case_id}' contains duplicate expected behaviors."
+            )
 
     return cases
 

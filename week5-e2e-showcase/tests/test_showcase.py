@@ -100,3 +100,67 @@ async def test_weather_and_estimate_are_combined(monkeypatch):
     assert any(
         "irradiance proxy" in item for item in result.limitations
     )
+
+
+def test_time_alignment_accepts_observations_within_tolerance():
+    result = showcase.assess_time_alignment(
+        {"observed_at": "2026-10-19T04:40:00+00:00"},
+        {
+            "observed_at": "2026-10-19T10:00:00",
+            "timezone": "Asia/Kolkata",
+        },
+    )
+
+    assert result["aligned"] is True
+    assert result["status"] == "aligned"
+    assert result["difference_minutes"] == 10
+
+
+def test_time_alignment_rejects_observations_outside_tolerance():
+    result = showcase.assess_time_alignment(
+        {"observed_at": "2026-10-19T10:30:00+00:00"},
+        {
+            "observed_at": "2026-10-19T10:00:00",
+            "timezone": "Asia/Kolkata",
+        },
+    )
+
+    assert result["aligned"] is False
+    assert result["status"] == "not_aligned"
+    assert result["difference_minutes"] == 360.0
+
+
+def test_time_alignment_rejects_telemetry_without_timezone():
+    result = showcase.assess_time_alignment(
+        {"observed_at": "2026-10-19T10:00:00"},
+        {
+            "observed_at": "2026-10-19T15:30:00",
+            "timezone": "Asia/Kolkata",
+        },
+    )
+
+    assert result["aligned"] is False
+    assert result["status"] == "telemetry_timezone_missing"
+
+
+def test_time_alignment_handles_missing_weather():
+    result = showcase.assess_time_alignment(
+        {"observed_at": "2026-10-19T10:00:00+00:00"},
+        None,
+    )
+
+    assert result["aligned"] is False
+    assert result["status"] == "weather_unavailable"
+
+
+def test_time_alignment_rejects_invalid_timezone():
+    result = showcase.assess_time_alignment(
+        {"observed_at": "2026-10-19T10:00:00+00:00"},
+        {
+            "observed_at": "2026-10-19T10:00:00",
+            "timezone": "Invalid/Timezone",
+        },
+    )
+
+    assert result["aligned"] is False
+    assert result["status"] == "invalid_timestamp_or_timezone"
