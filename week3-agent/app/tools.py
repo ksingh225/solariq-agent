@@ -1,4 +1,5 @@
 
+import httpx
 from pathlib import Path
 import sys
 from typing import Any
@@ -57,7 +58,23 @@ async def assess_solar_conditions(
     if capacity_kw <= 0:
         raise ValueError("capacity_kw must be greater than zero")
 
-    weather = await get_live_solar_weather()
+    try:
+        weather = await get_live_solar_weather()
+    except (TimeoutError, ValueError, httpx.HTTPError):
+        return {
+            "status": "weather_unavailable",
+            "message": (
+                "Current weather data is unavailable; "
+                "no solar output estimate was calculated."
+            ),
+            "weather": None,
+            "estimate": None,
+            "limitations": [
+                "Weather data could not be retrieved or validated.",
+                "No solar output estimate was calculated.",
+                "Actual plant generation must be measured independently.",
+            ],
+        }
 
     irradiance_wm2 = weather["shortwave_radiation_wm2"]
     estimate = estimate_solar_output(
@@ -67,6 +84,7 @@ async def assess_solar_conditions(
     )
 
     return {
+        "status": "success",
         "weather": weather,
         "estimate": estimate,
         "limitations": [

@@ -80,8 +80,9 @@ async def test_assess_solar_conditions_rejects_zero_capacity():
         await tools.assess_solar_conditions(capacity_kw=0)
 
 
+
 @pytest.mark.asyncio
-async def test_assess_solar_conditions_propagates_weather_timeout(
+async def test_assess_solar_conditions_handles_weather_timeout(
     monkeypatch,
 ):
     async def failing_weather():
@@ -89,5 +90,55 @@ async def test_assess_solar_conditions_propagates_weather_timeout(
 
     monkeypatch.setattr(tools, "get_live_solar_weather", failing_weather)
 
-    with pytest.raises(TimeoutError, match="Weather request timed out"):
+    result = await tools.assess_solar_conditions(capacity_kw=5)
+
+    assert result["status"] == "weather_unavailable"
+    assert result["weather"] is None
+    assert result["estimate"] is None
+    assert "no solar output estimate was calculated" in result["message"]
+    assert any(
+        "measured independently" in item
+        for item in result["limitations"]
+    )
+@pytest.mark.asyncio
+async def test_assess_solar_conditions_handles_http_error(
+    monkeypatch,
+):
+    import httpx
+
+    async def failing_weather():
+        raise httpx.ConnectError("Connection failed")
+
+    monkeypatch.setattr(tools, "get_live_solar_weather", failing_weather)
+
+    result = await tools.assess_solar_conditions(capacity_kw=5)
+
+    assert result["status"] == "weather_unavailable"
+    assert result["weather"] is None
+    assert result["estimate"] is None
+    assert "unavailable" in result["message"].lower()
+@pytest.mark.asyncio
+async def test_assess_solar_conditions_handles_invalid_weather(
+    monkeypatch,
+):
+    async def invalid_weather():
+        raise ValueError("Invalid weather response")
+
+    monkeypatch.setattr(tools, "get_live_solar_weather", invalid_weather)
+
+    result = await tools.assess_solar_conditions(capacity_kw=5)
+
+    assert result["status"] == "weather_unavailable"
+    assert result["weather"] is None
+    assert result["estimate"] is None
+@pytest.mark.asyncio
+async def test_assess_solar_conditions_propagates_unexpected_error(
+    monkeypatch,
+):
+    async def failing_weather():
+        raise RuntimeError("Unexpected internal error")
+
+    monkeypatch.setattr(tools, "get_live_solar_weather", failing_weather)
+
+    with pytest.raises(RuntimeError, match="Unexpected internal error"):
         await tools.assess_solar_conditions(capacity_kw=5)
