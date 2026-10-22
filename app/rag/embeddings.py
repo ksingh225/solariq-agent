@@ -1,3 +1,4 @@
+from functools import lru_cache
 from sentence_transformers import SentenceTransformer
 
 
@@ -25,5 +26,10 @@ class EmbeddingModel:
             query,
             normalize_embeddings=True,
         )
-
         return embedding.tolist()
+
+
+@lru_cache(maxsize=1)
+def get_embedding_model() -> EmbeddingModel:
+    """Return a reusable embedding model instance."""
+    return EmbeddingModel()

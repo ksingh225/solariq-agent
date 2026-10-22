@@ -1,4 +1,4 @@
-from app.rag.embeddings import EmbeddingModel
+from app.rag.embeddings import get_embedding_model
 from app.rag.vector_store import COLLECTION_NAME, VectorStore
 
 
@@ -6,7 +6,7 @@ class Retriever:
     """Retrieve relevant SolarIQ knowledge from Qdrant."""
 
     def __init__(self):
-        self.embedding_model = EmbeddingModel()
+        self.embedding_model = get_embedding_model()
         self.vector_store = VectorStore()
 
     def search(

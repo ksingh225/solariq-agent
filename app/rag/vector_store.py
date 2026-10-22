@@ -1,3 +1,6 @@
+
+from pathlib import Path
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
@@ -9,8 +12,13 @@ VECTOR_SIZE = 384
 class VectorStore:
     """Qdrant vector store for SolarIQ knowledge."""
 
-    def __init__(self, path: str = "data/qdrant"):
-        self.client = QdrantClient(path=path)
+    def __init__(self, path: str | Path | None = None):
+        """Initialize Qdrant using a stable path independent of the working directory."""
+
+        if path is None:
+            path = Path(__file__).resolve().parents[2] / "data" / "qdrant"
+
+        self.client = QdrantClient(path=str(path))
 
     def create_collection(self) -> None:
         """Create the SolarIQ knowledge collection if it does not exist."""
@@ -39,9 +47,7 @@ class VectorStore:
                 vector=vector,
                 payload=payload,
             )
-            for index, (vector, payload) in enumerate(
-                zip(vectors, payloads)
-            )
+            for index, (vector, payload) in enumerate(zip(vectors, payloads))
         ]
 
         self.client.upsert(

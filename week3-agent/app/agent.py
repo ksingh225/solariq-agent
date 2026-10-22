@@ -2,10 +2,11 @@
 import importlib.util
 import os
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic_ai import Agent, ModelRetry
+from pydantic_ai import Agent, ModelRetry, RunContext
 
 from schemas import SolarAssessment
 from tools import (
@@ -14,6 +15,14 @@ from tools import (
     get_live_solar_weather,
     get_solar_knowledge,
 )
+
+
+@dataclass
+class SolarAgentDeps:
+    """State isolated to a single SolarIQ run."""
+
+    weather_status: str = "not_requested"
+
 
 # Load the repository's local .env file.
 load_dotenv()
@@ -26,7 +35,8 @@ CONFIG_PATH = (
 )
 
 SPEC = importlib.util.spec_from_file_location(
-    "solariq_week6_config", CONFIG_PATH
+    "solariq_week6_config",
+    CONFIG_PATH,
 )
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError("Unable to load SolarIQ Week 6 configuration.")
@@ -40,6 +50,7 @@ MODEL_NAME = CONFIG_MODULE.get_settings().solariq_model
 
 solar_agent = Agent(
     MODEL_NAME,
+    deps_type=SolarAgentDeps,
     output_type=SolarAssessment,
     system_prompt=(
         "You are SolarIQ, a solar operations decision-support assistant. "
@@ -55,21 +66,24 @@ solar_agent = Agent(
         "estimate plant output using an assumed capacity. Do not assume "
         "a default capacity or infer capacity from the question. "
 
-     "A weather-based output calculation is an estimate, not actual "
-"plant generation. Clearly label estimates and explain their "
-"limitations. Never present an estimate as a measured result. "
-"For every weather-based output estimate, include a limitation "
-"stating that the result is modeled from current weather and "
-"plant inputs, relies on simplified assumptions, and does not "
-"represent measured or actual generation. Mention relevant "
-"uncertainties such as changing irradiance, shading, soiling, "
-"system losses, or inverter efficiency when applicable. Do not "
-"claim these factors were observed unless supported by evidence. "
+        "A weather-based output calculation is an estimate, not actual "
+        "plant generation. Clearly label estimates and explain their "
+        "limitations. Never present an estimate as a measured result. "
+        "For every weather-based output estimate, include a limitation "
+        "stating that the result is modeled from current weather and "
+        "plant inputs, relies on simplified assumptions, and does not "
+        "represent measured or actual generation. Mention relevant "
+        "uncertainties such as changing irradiance, shading, soiling, "
+        "system losses, or inverter efficiency when applicable. Do not "
+        "claim these factors were observed unless supported by evidence. "
+
         "Weather data alone cannot establish underperformance or "
         "confirm a plant fault. When actual plant-generation data is "
         "unavailable, explicitly state that underperformance cannot be "
-        "confirmed. Do not infer a fault from cloud cover or "
-        "irradiance alone. "
+        "confirmed. Do not infer a fault from cloud cover or irradiance "
+        "alone. If current weather is unavailable, explicitly report "
+        "that limitation and do not invent weather values or calculate "
+        "a weather-based output estimate. "
 
         "Distinguish evidence of an output gap from evidence of its "
         "cause. When the user provides measured and expected output "
@@ -86,46 +100,45 @@ solar_agent = Agent(
         "gap alone does not prove shading, equipment malfunction, or "
         "another specific fault. A proposed check or a statement that "
         "more data is needed is not evidence that a fault exists. "
-      "If no relevant supporting evidence exists for a specific cause, "
-"set root_cause_hypotheses to an empty list and explain which "
-"additional measurements are needed. Never invent evidence "
-"to satisfy this requirement. "
+        "If no relevant supporting evidence exists for a specific cause, "
+        "set root_cause_hypotheses to an empty list and explain which "
+        "additional measurements are needed. Never invent evidence "
+        "to satisfy this requirement. "
 
-"When user-provided or tool-provided measured generation is below "
-"expected generation, explicitly distinguish the observed output "
-"gap from its unknown cause. State that the gap alone does not "
-"establish why output is lower. Include at least one actionable, "
-"non-invasive diagnostic recommendation, such as reviewing "
-"time-aligned generation readings, checking available inverter "
-"telemetry and alarm logs, and visually inspecting for shading "
-"or soiling where safe. Do not claim that any check has already "
-"been performed unless evidence confirms it. Keep routine checks "
-"low risk and do not direct physical equipment control. "
+        "When user-provided or tool-provided measured generation is below "
+        "expected generation, explicitly distinguish the observed output "
+        "gap from its unknown cause. State that the gap alone does not "
+        "establish why output is lower. Include at least one actionable, "
+        "non-invasive diagnostic recommendation, such as reviewing "
+        "time-aligned generation readings, checking available inverter "
+        "telemetry and alarm logs, and visually inspecting for shading "
+        "or soiling where safe. Do not claim that any check has already "
+        "been performed unless evidence confirms it. Keep routine checks "
+        "low risk and do not direct physical equipment control. "
+
         "Before interpreting zero generation, check the observation "
         "timestamp and irradiance when available. Zero irradiance at "
         "night is expected, and zero generation at night is normally "
-"When asked whether zero nighttime output indicates a fault, "
-"explicitly state that zero generation at night alone does not "
-"indicate a fault. Recommend checking daytime generation readings "
-"before assessing plant performance. "
-        "expected. Explain that daytime generation data is needed "
-        "to assess plant performance. When asked whether zero nighttime "
-        "output indicates a fault, explicitly recommend checking daytime "
-        "generation readings in the structured assessment. "
+        "expected. When asked whether zero nighttime output indicates "
+        "a fault, explicitly state that zero generation at night alone "
+        "does not indicate a fault. Recommend checking daytime generation "
+        "readings before assessing plant performance. Explain that "
+        "daytime generation data is needed to assess plant performance. "
 
-       "When actual generation readings and inverter telemetry are "
-"missing, give a cautious assessment without claiming a "
-"confirmed cause. For this situation, set root_cause_hypotheses "
-"to an empty list unless there is supporting evidence. You MUST "
-"include at least one actionable recommendation in the structured "
-"recommendations list: obtain actual generation readings AND "
-"inverter telemetry. Classify this routine data collection as low "
-"risk and set requires_human_approval to false. Do not leave "
-"recommendations empty when this data is missing. State that "
-"underperformance cannot be confirmed without measured-generation "
-"evidence. Do not use phrases such as "        "'the plant is underperforming' unless supported by observed "
-        "measured-generation evidence. Do not repeat an unsupported "
-        "claim even to explain why it is uncertain. "
+        "When actual generation readings and inverter telemetry are "
+        "missing, give a cautious assessment without claiming a "
+        "confirmed cause. Set root_cause_hypotheses to an empty list "
+        "unless there is supporting evidence. Include at least one "
+        "actionable recommendation in the structured recommendations "
+        "list: obtain actual generation readings and inverter telemetry. "
+        "Classify this routine data collection as low risk and set "
+        "requires_human_approval to false. Do not leave recommendations "
+        "empty when this data is missing. State that underperformance "
+        "cannot be confirmed without measured-generation evidence. "
+        "Do not use phrases such as 'the plant is underperforming' "
+        "unless supported by observed measured-generation evidence. "
+        "Do not repeat an unsupported claim even to explain why it is "
+        "uncertain. "
 
         "Use only evidence returned by tools or provided by the user. "
         "Do not describe current weather as historical or recent trends "
@@ -173,8 +186,9 @@ def calculate_expected_output(
     )
 
 
-@solar_agent.tool_plain
+@solar_agent.tool
 async def assess_current_solar_conditions(
+    ctx: RunContext[SolarAgentDeps],
     capacity_kw: float,
     efficiency: float = 0.80,
 ) -> dict:
@@ -183,6 +197,7 @@ async def assess_current_solar_conditions(
     Do not call this tool with an assumed plant capacity.
     """
     if capacity_kw <= 0:
+        ctx.deps.weather_status = "missing_or_invalid_capacity"
         return {
             "status": "missing_or_invalid_capacity",
             "message": (
@@ -197,15 +212,30 @@ async def assess_current_solar_conditions(
             ],
         }
 
-    return await assess_solar_conditions(
+    result = await assess_solar_conditions(
         capacity_kw=capacity_kw,
         efficiency=efficiency,
     )
-@solar_agent.output_validator
-def validate_solar_assessment(
+
+    # Record the status in this run's dependency object only.
+    status = result.get("status")
+    if status:
+        ctx.deps.weather_status = status
+    elif result.get("weather") is not None and result.get("estimate") is not None:
+        # Preserve compatibility with successful assessment results
+        # that do not explicitly return a status field.
+        ctx.deps.weather_status = "available"
+    else:
+        ctx.deps.weather_status = "unknown"
+
+    return result
+
+
+def validate_solar_assessment_rules(
     assessment: SolarAssessment,
+    weather_status: str = "not_requested",
 ) -> SolarAssessment:
-    """Reject unsupported claims that underperformance is established."""
+    """Reject unsupported claims and weather-dependent conclusions."""
 
     assessment_text = " ".join(
         [
@@ -225,6 +255,74 @@ def validate_solar_assessment(
             ],
         ]
     ).lower()
+
+    # When weather retrieval failed, reject weather-derived estimates.
+    if weather_status == "weather_unavailable":
+        weather_terms = (
+            "weather",
+            "irradiance",
+            "solar radiation",
+            "cloud cover",
+        )
+        weather_estimates = [
+            item.description
+            for item in assessment.evidence
+            if item.evidence_type == "estimated"
+            and any(
+                term in f"{item.description} {item.source}".lower()
+                for term in weather_terms
+            )
+        ]
+
+        if weather_estimates:
+            raise ModelRetry(
+                "Weather is unavailable. Do not present a weather-based "
+                "estimate as evidence. Explain the unavailable weather "
+                "data and request independently measured generation "
+                "readings and inverter telemetry."
+            )
+
+        # A hypothesis needs independent evidence if weather is unavailable.
+        has_observed_generation_evidence = any(
+            item.evidence_type == "observed"
+            and any(
+                term in item.description.lower()
+                for term in (
+                    "actual generation",
+                    "measured generation",
+                    "actual output",
+                    "measured output",
+                    "plant telemetry",
+                )
+            )
+            for item in assessment.evidence
+        )
+
+        if (
+            assessment.root_cause_hypotheses
+            and not has_observed_generation_evidence
+        ):
+            raise ModelRetry(
+                "Current weather is unavailable and no observed measured-"
+                "generation evidence supports a root-cause assessment. "
+                "Omit root-cause hypotheses and request actual generation "
+                "readings and inverter telemetry."
+            )
+
+        weather_failure_acknowledged = (
+            "weather" in assessment_text
+            and (
+                "unavailable" in assessment_text
+                or "could not be retrieved" in assessment_text
+                or "could not be validated" in assessment_text
+            )
+        )
+        if not weather_failure_acknowledged:
+            raise ModelRetry(
+                "The weather tool reported weather_unavailable. Explicitly "
+                "state that current weather data is unavailable and that "
+                "no weather-based output estimate was calculated."
+            )
 
     measured_terms = (
         "actual generation",
@@ -303,3 +401,14 @@ def validate_solar_assessment(
         )
 
     return assessment
+
+@solar_agent.output_validator
+def validate_solar_assessment(
+    ctx: RunContext[SolarAgentDeps],
+    assessment: SolarAssessment,
+) -> SolarAssessment:
+    """Delegate output validation using this run's weather status."""
+    return validate_solar_assessment_rules(
+        assessment,
+        weather_status=ctx.deps.weather_status,
+    )

@@ -4,7 +4,7 @@ from app.rag.retriever import Retriever
 
 
 @patch("app.rag.retriever.VectorStore")
-@patch("app.rag.retriever.EmbeddingModel")
+@patch("app.rag.retriever.get_embedding_model")
 def test_retriever_returns_relevant_results(
     mock_embedding_model,
     mock_vector_store,

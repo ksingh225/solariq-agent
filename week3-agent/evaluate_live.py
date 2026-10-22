@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT / "week2-realtime-data" / "app"))
 
 load_dotenv(ROOT / ".env")
 
-from agent import solar_agent
+from agent import SolarAgentDeps, solar_agent
 
 
 SCENARIOS = [
@@ -146,20 +146,27 @@ async def evaluate_scenario(scenario: dict) -> bool:
     print(f"\n=== {scenario['name']} ===")
     print(f"Question: {scenario['question']}")
 
+    started_at = asyncio.get_running_loop().time()
+
     try:
         result = await asyncio.wait_for(
-            solar_agent.run(scenario["question"]),
+            solar_agent.run(
+                scenario["question"],
+                deps=SolarAgentDeps(),
+            ),
             timeout=SCENARIO_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError:
+        elapsed = asyncio.get_running_loop().time() - started_at
         print(
-            f"REVIEW: Scenario timed out after "
-            f"{SCENARIO_TIMEOUT_SECONDS} seconds."
+            f"REVIEW: Scenario timed out after {elapsed:.1f} seconds "
+            f"(limit: {SCENARIO_TIMEOUT_SECONDS} seconds)."
         )
         return False
     except Exception as exc:
+        elapsed = asyncio.get_running_loop().time() - started_at
         print(
-            f"REVIEW: Agent run failed: "
+            f"REVIEW: Agent run failed after {elapsed:.1f} seconds: "
             f"{type(exc).__name__}: {exc}"
         )
         traceback.print_exc()

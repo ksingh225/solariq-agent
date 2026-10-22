@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(1, str(ROOT / "week2-realtime-data" / "app"))
 sys.path.insert(2, str(ROOT / "week3-agent" / "app"))
 
-from agent import solar_agent
+from agent import SolarAgentDeps, solar_agent
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,8 @@ async def test_agent_returns_structured_assessment():
 
     with solar_agent.override(model=test_model):
         result = await solar_agent.run(
-            "Assess a hypothetical 5 kW solar system."
+            "Assess a hypothetical 5 kW solar system.",
+            deps=SolarAgentDeps(),
         )
 
     assert result.output.summary
@@ -35,7 +36,8 @@ async def test_agent_can_invoke_registered_tool():
 
     with solar_agent.override(model=test_model):
         result = await solar_agent.run(
-            "Use solar knowledge to explain low generation."
+            "Use solar knowledge to explain low generation.",
+            deps=SolarAgentDeps(),
         )
 
     assert result.output.summary
@@ -60,6 +62,7 @@ def test_rag_tool_returns_real_knowledge():
 @pytest.mark.asyncio
 async def test_agent_can_invoke_combined_solar_assessment(monkeypatch):
     expected = {
+        "status": "success",
         "weather": {
             "shortwave_radiation_wm2": 700,
             "temperature_c": 30.0,
@@ -90,11 +93,41 @@ async def test_agent_can_invoke_combined_solar_assessment(monkeypatch):
 
     with solar_agent.override(model=test_model):
         result = await solar_agent.run(
-            "Assess current conditions for a hypothetical 5 kW solar system."
+            "Assess current conditions for a hypothetical 5 kW solar system.",
+            deps=SolarAgentDeps(),
         )
 
     assert result.output.summary
     assert isinstance(result.output.recommendations, list)
+
+
+@pytest.mark.asyncio
+async def test_combined_assessment_records_weather_status(monkeypatch):
+    from agent import assess_current_solar_conditions
+
+    async def fake_assessment(capacity_kw, efficiency=0.80):
+        return {
+            "status": "weather_unavailable",
+            "weather": None,
+            "estimate": None,
+            "limitations": ["Weather unavailable"],
+        }
+
+    monkeypatch.setattr(
+        "agent.assess_solar_conditions",
+        fake_assessment,
+    )
+
+    deps = SolarAgentDeps()
+    ctx = type("TestContext", (), {"deps": deps})()
+
+    result = await assess_current_solar_conditions(
+        ctx,
+        capacity_kw=5,
+    )
+
+    assert result["status"] == "weather_unavailable"
+    assert deps.weather_status == "weather_unavailable"
 
 
 def test_agent_instructions_handle_nighttime_conditions():
@@ -111,7 +144,7 @@ def test_agent_instructions_handle_nighttime_conditions():
 
 def test_validator_rejects_unsupported_underperformance_claim():
     from pydantic_ai import ModelRetry
-    from agent import validate_solar_assessment
+    from agent import validate_solar_assessment_rules
     from schemas import SolarAssessment
 
     assessment = SolarAssessment(
@@ -123,11 +156,11 @@ def test_validator_rejects_unsupported_underperformance_claim():
         ModelRetry,
         match="Unsupported-claim validator triggered",
     ):
-        validate_solar_assessment(assessment)
+        validate_solar_assessment_rules(assessment)
 
 
 def test_validator_accepts_cautious_underperformance_statement():
-    from agent import validate_solar_assessment
+    from agent import validate_solar_assessment_rules
     from schemas import SolarAssessment
 
     assessment = SolarAssessment(
@@ -141,7 +174,7 @@ def test_validator_accepts_cautious_underperformance_statement():
         ],
     )
 
-    result = validate_solar_assessment(assessment)
+    result = validate_solar_assessment_rules(assessment)
 
     assert result.summary == assessment.summary
 
@@ -164,7 +197,7 @@ def test_routine_data_collection_does_not_require_high_risk():
 
 def test_validator_rejects_root_cause_hypothesis_without_evidence():
     from pydantic_ai import ModelRetry
-    from agent import validate_solar_assessment
+    from agent import validate_solar_assessment_rules
     from schemas import RootCauseHypothesis, SolarAssessment
 
     assessment = SolarAssessment(
@@ -185,7 +218,7 @@ def test_validator_rejects_root_cause_hypothesis_without_evidence():
     )
 
     with pytest.raises(ModelRetry):
-        validate_solar_assessment(assessment)
+        validate_solar_assessment_rules(assessment)
 
 
 def test_agent_does_not_assume_missing_plant_capacity():
@@ -197,8 +230,9 @@ def test_agent_does_not_assume_missing_plant_capacity():
     assert "do not call tools" in prompt_text
     assert "do not assume a default capacity" in prompt_text
 
+
 def test_validator_accepts_missing_telemetry_without_confirming_underperformance():
-    from agent import validate_solar_assessment
+    from agent import validate_solar_assessment_rules
     from schemas import Recommendation, SolarAssessment
 
     assessment = SolarAssessment(
@@ -225,9 +259,90 @@ def test_validator_accepts_missing_telemetry_without_confirming_underperformance
         ],
     )
 
-    result = validate_solar_assessment(assessment)
+    result = validate_solar_assessment_rules(assessment)
 
     assert result.summary == assessment.summary
     assert result.root_cause_hypotheses == []
     assert len(result.recommendations) == 2
 
+
+@pytest.mark.asyncio
+async def test_agent_handles_weather_unavailable_without_claiming_output(
+    monkeypatch,
+):
+    unavailable = {
+        "status": "weather_unavailable",
+        "message": (
+            "Current weather data is unavailable; "
+            "no solar output estimate was calculated."
+        ),
+        "weather": None,
+        "estimate": None,
+        "limitations": [
+            "Weather data could not be retrieved or validated.",
+            "No solar output estimate was calculated.",
+            "Actual plant generation must be measured independently.",
+        ],
+    }
+
+    async def fake_assessment(capacity_kw, efficiency=0.80):
+        return unavailable
+
+    monkeypatch.setattr(
+        "agent.assess_solar_conditions",
+        fake_assessment,
+    )
+
+    test_model = TestModel(
+        call_tools=["assess_current_solar_conditions"],
+        custom_output_args={
+            "summary": (
+                "Current weather is unavailable, so no solar output "
+                "estimate can be calculated."
+            ),
+            "evidence": [],
+            "root_cause_hypotheses": [],
+            "recommendations": [
+                {
+                    "action": (
+                        "Obtain actual generation readings and inverter "
+                        "telemetry to assess plant performance."
+                    ),
+                    "risk_level": "low",
+                    "requires_human_approval": False,
+                }
+            ],
+            "limitations": [
+                "Weather data is unavailable.",
+                "Underperformance cannot be confirmed without measured "
+                "generation data.",
+            ],
+        },
+    )
+
+    with solar_agent.override(model=test_model):
+        result = await solar_agent.run(
+            "Assess current conditions for a hypothetical 5 kW solar system.",
+            deps=SolarAgentDeps(),
+        )
+
+    assert result.output.summary
+    assert result.output.root_cause_hypotheses == []
+
+    assessment_text = " ".join(
+        [
+            result.output.summary,
+            *result.output.limitations,
+            *[
+                recommendation.action
+                for recommendation in result.output.recommendations
+            ],
+        ]
+    ).lower()
+
+    assert "weather" in assessment_text
+    assert (
+        "unavailable" in assessment_text
+        or "no solar output estimate was calculated" in assessment_text
+        or "cannot be calculated" in assessment_text
+    )
