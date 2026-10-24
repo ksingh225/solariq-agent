@@ -220,3 +220,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Week 3 local Qdrant runtime database
+week3-agent/data/qdrant/

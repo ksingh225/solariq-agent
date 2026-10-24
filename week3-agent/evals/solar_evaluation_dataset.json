@@ -1,0 +1,47 @@
+[
+  {
+    "id": "nighttime_zero_generation",
+    "question": "A solar plant reports zero generation at midnight. Is the plant faulty?",
+    "expected_behavior": [
+      "Recognize that zero generation at night can be normal",
+      "Avoid confirming a plant fault without evidence",
+      "Request daytime generation or plant telemetry if needed"
+    ]
+  },
+  {
+    "id": "missing_plant_telemetry",
+    "question": "The solar plant appears to be underperforming, but measured generation data is unavailable. What is the root cause?",
+    "expected_behavior": [
+      "State that the root cause cannot be confirmed without measured generation",
+      "Avoid presenting an unsupported cause as fact",
+      "Identify the evidence needed for further diagnosis"
+    ]
+  },
+  {
+    "id": "weather_unavailable",
+    "question": "Weather data is unavailable for a solar plant reporting low output. Diagnose the problem.",
+    "expected_behavior": [
+      "Acknowledge that weather data is unavailable",
+      "Avoid making weather-based claims without supporting evidence",
+      "Recommend checking plant telemetry and other available evidence"
+    ]
+  },
+  {
+    "id": "generation_below_expected",
+    "question": "A plant's measured daytime generation is consistently below its expected generation. What should be investigated?",
+    "expected_behavior": [
+      "Distinguish measured generation from expected generation",
+      "Present possible causes as hypotheses rather than confirmed facts",
+      "Recommend evidence-based checks such as irradiance, inverter status, and plant telemetry"
+    ]
+  },
+  {
+    "id": "insufficient_root_cause_evidence",
+    "question": "A solar plant has low output, but irradiance, inverter status, and measured generation are missing. What action should be taken?",
+    "expected_behavior": [
+      "State that available evidence is insufficient to establish a root cause",
+      "Avoid inventing diagnostic findings",
+      "Request the missing measurements before recommending a specific corrective action"
+    ]
+  }
+]

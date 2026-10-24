@@ -1,0 +1,158 @@
+{
+  "scenario_count": 5,
+  "scenarios_fully_passed": 5,
+  "checks_passed": 15,
+  "checks_total": 15,
+  "pass_rate": 1.0,
+  "results": [
+    {
+      "id": "nighttime_zero_generation",
+      "status": "passed",
+      "passed_checks": 3,
+      "total_checks": 3,
+      "checks": {
+        "nighttime_zero_generation_can_be_normal": true,
+        "does_not_confirm_fault_without_evidence": true,
+        "requests_daytime_data_or_telemetry": true
+      },
+      "assessment": {
+        "summary": "Zero generation at midnight is expected for solar plants as there is no sunlight available. It does not indicate a fault in the system. To effectively assess the plant's performance, it's necessary to review daytime generation readings when sunlight is present.",
+        "evidence": [],
+        "root_cause_hypotheses": [],
+        "recommendations": [
+          {
+            "action": "Check daytime generation readings to assess performance accurately.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          }
+        ],
+        "limitations": []
+      }
+    },
+    {
+      "id": "missing_plant_telemetry",
+      "status": "passed",
+      "passed_checks": 3,
+      "total_checks": 3,
+      "checks": {
+        "root_cause_not_confirmed_without_measured_generation": true,
+        "no_unsupported_root_cause_hypotheses": true,
+        "identifies_evidence_needed": true
+      },
+      "assessment": {
+        "summary": "Underperformance cannot be confirmed without actual measured generation data. The observed output gap does not provide sufficient evidence to determine a specific reason for potential underperformance.",
+        "evidence": [],
+        "root_cause_hypotheses": [],
+        "recommendations": [
+          {
+            "action": "Obtain actual generation readings and inverter telemetry to assess performance accurately.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          }
+        ],
+        "limitations": [
+          "Without measured generation evidence, it is challenging to establish the status of the plant's performance."
+        ]
+      }
+    },
+    {
+      "id": "weather_unavailable",
+      "status": "passed",
+      "passed_checks": 3,
+      "total_checks": 3,
+      "checks": {
+        "acknowledges_weather_unavailable": true,
+        "avoids_unsupported_weather_estimates": true,
+        "recommends_telemetry_or_other_evidence": true
+      },
+      "assessment": {
+        "summary": "The solar plant is reporting low output, but without current weather data or measured generation readings, it is not possible to confirm any specific cause for the low output. The absence of weather data limits the ability to assess environmental factors such as irradiance or shading that could impact performance. Moreover, without actual generation measurements, the observed output gap cannot be evaluated against expected performance, leaving the cause of low output unknown.",
+        "evidence": [],
+        "root_cause_hypotheses": [],
+        "recommendations": [
+          {
+            "action": "Obtain actual generation readings and inverter telemetry for closer examination of performance.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          }
+        ],
+        "limitations": [
+          "Without current weather data or measured generation outputs, the low output cannot be confirmed as a fault or underperformance."
+        ]
+      }
+    },
+    {
+      "id": "generation_below_expected",
+      "status": "passed",
+      "passed_checks": 3,
+      "total_checks": 3,
+      "checks": {
+        "distinguishes_measured_and_expected_generation": true,
+        "treats_causes_as_hypotheses_not_facts": true,
+        "recommends_evidence_based_checks": true
+      },
+      "assessment": {
+        "summary": "To investigate the issue of a solar plant's measured daytime generation being consistently below expected levels, the following factors should be examined: weather conditions (particularly irradiance), shading, soiling of solar panels, inverter performance, and overall equipment availability. Each of these could significantly affect generation and may help identify the cause of the output gap.",
+        "evidence": [],
+        "root_cause_hypotheses": [],
+        "recommendations": [
+          {
+            "action": "Investigate current weather conditions and solar irradiance levels during the generation period.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          },
+          {
+            "action": "Check for shading on solar panels from nearby objects or structures.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          },
+          {
+            "action": "Inspect solar panels for soiling or dirt accumulation that could affect performance.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          },
+          {
+            "action": "Review inverter status and performance logs to identify any operational issues.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          },
+          {
+            "action": "Examine the overall equipment availability to confirm that all systems are functioning properly.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          }
+        ],
+        "limitations": [
+          "Actual generation data and specific performance metrics are required for a more precise assessment of plant performance."
+        ]
+      }
+    },
+    {
+      "id": "insufficient_root_cause_evidence",
+      "status": "passed",
+      "passed_checks": 3,
+      "total_checks": 3,
+      "checks": {
+        "states_evidence_is_insufficient": true,
+        "avoids_unsupported_hypotheses": true,
+        "requests_missing_measurements": true
+      },
+      "assessment": {
+        "summary": "Underperformance cannot be confirmed without measured-generation data. To assess the solar plant's performance, it is essential to obtain current generation readings and inverter telemetry. This data is critical for identifying any potential issues affecting output.",
+        "evidence": [],
+        "root_cause_hypotheses": [],
+        "recommendations": [
+          {
+            "action": "Obtain actual generation readings and inverter telemetry to evaluate plant performance.",
+            "risk_level": "low",
+            "requires_human_approval": false
+          }
+        ],
+        "limitations": [
+          "Without irradiance and measured generation data, the solar plant's performance cannot be assessed accurately."
+        ]
+      }
+    }
+  ],
+  "note": "Keyword-based screening only; review assessments before drawing safety conclusions."
+}
