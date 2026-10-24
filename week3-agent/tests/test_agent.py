@@ -179,6 +179,72 @@ def test_validator_accepts_cautious_underperformance_statement():
     assert result.summary == assessment.summary
 
 
+def test_validator_accepts_alternative_weather_unavailable_wording():
+    from agent import validate_solar_assessment_rules
+    from schemas import SolarAssessment
+
+    assessment = SolarAssessment(
+        summary=(
+            "Weather information cannot be obtained, so no weather-based "
+            "output estimate was calculated. The cause of the reported "
+            "low output cannot be confirmed."
+        ),
+        evidence=[],
+        root_cause_hypotheses=[],
+        recommendations=[],
+        limitations=[
+            "Check actual generation readings and inverter telemetry."
+        ],
+    )
+
+    result = validate_solar_assessment_rules(
+        assessment,
+        weather_status="weather_unavailable",
+    )
+
+    assert result.summary == assessment.summary
+
+
+def test_validator_accepts_cautiously_attributed_reported_generation_gap():
+    from agent import validate_solar_assessment_rules
+    from schemas import SolarAssessment
+
+    assessment = SolarAssessment(
+        summary=(
+            "The user reports measured daytime generation is below "
+            "expected generation, but this has not been independently "
+            "verified. The cause is unknown."
+        ),
+        evidence=[],
+        root_cause_hypotheses=[],
+        limitations=[
+            "Actual generation readings and telemetry are needed "
+            "to verify the reported gap."
+        ],
+    )
+
+    result = validate_solar_assessment_rules(assessment)
+
+    assert result.summary == assessment.summary
+
+
+def test_validator_still_rejects_unattributed_generation_gap_without_evidence():
+    from pydantic_ai import ModelRetry
+    from agent import validate_solar_assessment_rules
+    from schemas import SolarAssessment
+
+    assessment = SolarAssessment(
+        summary="Measured daytime generation is below expected generation.",
+        evidence=[],
+    )
+
+    with pytest.raises(
+        ModelRetry,
+        match="Unsupported-claim validator triggered",
+    ):
+        validate_solar_assessment_rules(assessment)
+
+
 def test_routine_data_collection_does_not_require_high_risk():
     from schemas import Recommendation
 
@@ -346,3 +412,51 @@ async def test_agent_handles_weather_unavailable_without_claiming_output(
         or "no solar output estimate was calculated" in assessment_text
         or "cannot be calculated" in assessment_text
     )
+
+
+@pytest.mark.asyncio
+async def test_standalone_weather_tool_records_unavailable_status(monkeypatch):
+    from agent import fetch_current_weather
+
+    async def failing_weather():
+        raise TimeoutError("Weather request timed out")
+
+    monkeypatch.setattr("agent.get_live_solar_weather", failing_weather)
+
+    deps = SolarAgentDeps()
+    ctx = type("TestContext", (), {"deps": deps})()
+
+    result = await fetch_current_weather(ctx)
+
+    assert result["status"] == "weather_unavailable"
+    assert result["weather"] is None
+    assert result["estimate"] is None
+    assert deps.weather_status == "weather_unavailable"
+
+
+def test_validator_accepts_user_provided_measured_vs_expected_gap():
+    from agent import validate_solar_assessment_rules
+    from schemas import Evidence, SolarAssessment
+
+    assessment = SolarAssessment(
+        summary=(
+            "Measured daytime generation is below expected generation. "
+            "This observed gap does not establish its cause."
+        ),
+        evidence=[
+            Evidence(
+                description=(
+                    "The user reports measured daytime generation "
+                    "below expected generation."
+                ),
+                source="User input",
+                evidence_type="observed",
+            )
+        ],
+        root_cause_hypotheses=[],
+    )
+
+    result = validate_solar_assessment_rules(assessment)
+
+    assert result.summary == assessment.summary
+    assert result.root_cause_hypotheses == []

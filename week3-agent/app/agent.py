@@ -2,6 +2,8 @@
 import importlib.util
 import os
 import sys
+
+import httpx
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -106,8 +108,11 @@ solar_agent = Agent(
         "to satisfy this requirement. "
 
         "When user-provided or tool-provided measured generation is below "
-        "expected generation, explicitly distinguish the observed output "
-        "gap from its unknown cause. State that the gap alone does not "
+        "expected generation, explicitly state in the summary that measured "
+        "generation is below expected generation. Clearly distinguish the "
+        "measured value from the expected value; do not invent numerical "
+        "values when they are not provided. Explain that the observed output "
+        "gap is separate from its unknown cause. State that the gap alone does not "
         "establish why output is lower. Include at least one actionable, "
         "non-invasive diagnostic recommendation, such as reviewing "
         "time-aligned generation readings, checking available inverter "
@@ -163,10 +168,32 @@ def retrieve_solar_knowledge(query: str) -> dict:
     return get_solar_knowledge(query)
 
 
-@solar_agent.tool_plain
-async def fetch_current_weather() -> dict:
-    """Fetch current weather for the configured solar location."""
-    return await get_live_solar_weather()
+@solar_agent.tool
+async def fetch_current_weather(
+    ctx: RunContext[SolarAgentDeps],
+) -> dict:
+    """Fetch current weather and record its availability for this run."""
+    try:
+        result = await get_live_solar_weather()
+    except (TimeoutError, ValueError, httpx.HTTPError):
+        ctx.deps.weather_status = "weather_unavailable"
+        return {
+            "status": "weather_unavailable",
+            "message": (
+                "Current weather data is unavailable; "
+                "no solar output estimate was calculated."
+            ),
+            "weather": None,
+            "estimate": None,
+            "limitations": [
+                "Weather data could not be retrieved or validated.",
+                "No solar output estimate was calculated.",
+                "Actual plant generation must be measured independently.",
+            ],
+        }
+
+    ctx.deps.weather_status = "available"
+    return result
 
 
 @solar_agent.tool_plain
@@ -311,10 +338,17 @@ def validate_solar_assessment_rules(
 
         weather_failure_acknowledged = (
             "weather" in assessment_text
-            and (
-                "unavailable" in assessment_text
-                or "could not be retrieved" in assessment_text
-                or "could not be validated" in assessment_text
+            and any(
+                phrase in assessment_text
+                for phrase in (
+                    "unavailable",
+                    "could not be retrieved",
+                    "could not be validated",
+                    "cannot be obtained",
+                    "cannot obtain",
+                    "not available",
+                    "unable to obtain",
+                )
             )
         )
         if not weather_failure_acknowledged:
@@ -327,6 +361,8 @@ def validate_solar_assessment_rules(
     measured_terms = (
         "actual generation",
         "measured generation",
+        "measured daytime generation",
+        "actual daytime generation",
         "actual output",
         "measured output",
         "plant telemetry",
@@ -372,10 +408,34 @@ def validate_solar_assessment_rules(
     for phrase in cautious_phrases:
         claim_text = claim_text.replace(phrase, "")
 
+    reported_gap_is_cautiously_attributed = (
+        any(
+            phrase in assessment_text
+            for phrase in (
+                "the user reports measured daytime generation",
+                "the user reports measured generation",
+                "reported by the user",
+            )
+        )
+        and any(
+            phrase in assessment_text
+            for phrase in (
+                "not been independently verified",
+                "not independently verified",
+                "cannot be independently verified",
+                "has not been verified",
+            )
+        )
+    )
+
     matched_claims = [
         claim
         for claim in unsupported_claims
         if claim in claim_text
+        and not (
+            claim == "below expected generation"
+            and reported_gap_is_cautiously_attributed
+        )
     ]
 
     if not has_measured_evidence and matched_claims:

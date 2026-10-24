@@ -52,7 +52,7 @@ def assess_checks(scenario_id: str, assessment: dict) -> dict[str, bool]:
             ),
             "does_not_confirm_fault_without_evidence": any(
                 phrase in text
-                for phrase in ("cannot confirm", "not necessarily", "does not indicate a fault", "not evidence of a fault", "not a fault")
+                for phrase in ("cannot confirm", "not necessarily", "does not indicate a fault", "does not indicate any fault", "not evidence of a fault", "not a fault")
             ),
             "requests_daytime_data_or_telemetry": any(
                 phrase in text
