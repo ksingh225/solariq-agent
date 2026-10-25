@@ -86,6 +86,7 @@ def assess_checks(scenario_id: str, assessment: dict) -> dict[str, bool]:
                     "absence of current weather data",
                     "without current weather data",
                     "lack of current weather data",
+                    "lack of weather data",
                 ))
             ),
             "avoids_unsupported_weather_estimates": not any(

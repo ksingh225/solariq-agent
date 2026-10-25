@@ -2,10 +2,10 @@
 import importlib.util
 import os
 import sys
-
-import httpx
 from dataclasses import dataclass
 from pathlib import Path
+
+import httpx
 
 from dotenv import load_dotenv
 from pydantic_ai import Agent, ModelRetry, RunContext
@@ -95,6 +95,17 @@ solar_agent = Agent(
         "output. Do not assume ideal or clear weather conditions unless "
         "supported by evidence. "
 
+        "Classify evidence according to what it represents and where it "
+        "comes from. A user-reported measurement or comparison may be "
+        "classified as observed evidence, with its source identified as "
+        "user-provided; this does not mean it has been independently "
+        "verified. Use estimated only for modeled or calculated values, "
+        "such as a weather-based generation estimate. Do not create a "
+        "separate estimated evidence item merely to restate a comparison "
+        "already reported by the user. Use documented for facts supported "
+        "by retrieved manuals, SOPs, or other documentation. Never imply "
+        "independent verification unless a tool or source supports it. "
+
         "Every root-cause hypothesis must include specific supporting "
         "evidence in its evidence field, drawn from evidence provided "
         "by the user or returned by tools. The evidence must actually "
@@ -107,7 +118,7 @@ solar_agent = Agent(
         "additional measurements are needed. Never invent evidence "
         "to satisfy this requirement. "
 
-        "When user-provided or tool-provided measured generation is below "
+        "Only when user-provided or tool-provided evidence explicitly establishes that measured generation is below "
         "expected generation, explicitly state in the summary that measured "
         "generation is below expected generation. Clearly distinguish the "
         "measured value from the expected value; do not invent numerical "
@@ -471,6 +482,7 @@ def validate_solar_assessment_rules(
         )
 
     return assessment
+
 
 @solar_agent.output_validator
 def validate_solar_assessment(
