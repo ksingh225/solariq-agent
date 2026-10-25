@@ -395,6 +395,7 @@ def validate_solar_assessment_rules(
     # Avoid common explicit negations triggering a phrase-based false positive.
     cautious_phrases = (
         "underperformance cannot be confirmed",
+        "the plant is underperforming cannot be confirmed",
         "underperformance can't be confirmed",
         "cannot confirm underperformance",
         "unable to confirm underperformance",
@@ -415,6 +416,9 @@ def validate_solar_assessment_rules(
                 "the user reports measured daytime generation",
                 "the user reports measured generation",
                 "reported by the user",
+                "the question reports",
+                "the scenario reports",
+                "reported measured generation",
             )
         )
         and any(
@@ -424,6 +428,12 @@ def validate_solar_assessment_rules(
                 "not independently verified",
                 "cannot be independently verified",
                 "has not been verified",
+                "the cause is unknown",
+                "does not establish its cause",
+                "does not establish the cause",
+                "does not establish why",
+                "cannot confirm underperformance",
+                "underperformance cannot be confirmed",
             )
         )
     )

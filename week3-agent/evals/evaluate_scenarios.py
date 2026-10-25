@@ -165,6 +165,12 @@ async def evaluate_scenario(scenario: dict) -> dict:
         }
     except Exception as exc:
         print(f"ERROR: {type(exc).__name__}: {exc}")
+        cause = exc.__cause__ or exc.__context__
+        depth = 0
+        while cause is not None and depth < 10:
+            print(f"  CAUSED BY {depth + 1}: {type(cause).__name__}: {cause}")
+            cause = cause.__cause__ or cause.__context__
+            depth += 1
         return {
             "id": scenario_id,
             "status": "error",

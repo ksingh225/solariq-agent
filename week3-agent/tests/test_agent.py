@@ -460,3 +460,43 @@ def test_validator_accepts_user_provided_measured_vs_expected_gap():
 
     assert result.summary == assessment.summary
     assert result.root_cause_hypotheses == []
+
+
+def test_validator_accepts_alternative_unverified_generation_gap_wording():
+    from agent import validate_solar_assessment_rules
+    from schemas import SolarAssessment
+
+    assessment = SolarAssessment(
+        summary=(
+            "The reported daytime output is lower than expected, "
+            "but the figures have not been independently verified."
+        ),
+        evidence=[],
+        root_cause_hypotheses=[],
+    )
+
+    result = validate_solar_assessment_rules(assessment)
+
+    assert result.summary == assessment.summary
+
+
+def test_validator_accepts_cautious_below_expected_generation_wording():
+    from agent import validate_solar_assessment_rules
+    from schemas import SolarAssessment
+
+    assessment = SolarAssessment(
+        summary=(
+            "The user reports measured daytime generation is below "
+            "expected generation, but this has not been independently "
+            "verified. The cause is unknown."
+        ),
+        evidence=[],
+        root_cause_hypotheses=[],
+        limitations=[
+            "Check measured generation readings and inverter telemetry."
+        ],
+    )
+
+    result = validate_solar_assessment_rules(assessment)
+
+    assert result.summary == assessment.summary
