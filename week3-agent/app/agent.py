@@ -1,6 +1,7 @@
 
 import importlib.util
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,23 +89,30 @@ solar_agent = Agent(
         "a weather-based output estimate. "
 
         "Distinguish evidence of an output gap from evidence of its "
-        "cause. When the user provides measured and expected output "
-        "values, include those values as evidence of the observed gap "
-        "in the assessment evidence list, using the correct evidence "
-        "types and source. Do not describe expected output as measured "
-        "output. Do not assume ideal or clear weather conditions unless "
-        "supported by evidence. "
+        "cause. When the user provides both measured and expected output "
+        "values, create two separate evidence items, not one combined "
+        "item. The measured value must be a separate observed item whose "
+        "description explicitly identifies measured output and its value; "
+        "use source 'user-provided'. The expected value must be a separate "
+        "documented item whose description explicitly identifies expected "
+        "output and its value; use source 'user-provided'. Do not label "
+        "expected output as measured output or combine both classifications "
+        "in one evidence item. Do not assume ideal or clear weather "
+        "conditions unless supported by evidence. "
 
         "Classify evidence according to what it represents and where it "
-        "comes from. A user-reported measurement or comparison may be "
-        "classified as observed evidence, with its source identified as "
-        "user-provided; this does not mean it has been independently "
-        "verified. Use estimated only for modeled or calculated values, "
-        "such as a weather-based generation estimate. Do not create a "
-        "separate estimated evidence item merely to restate a comparison "
-        "already reported by the user. Use documented for facts supported "
-        "by retrieved manuals, SOPs, or other documentation. Never imply "
-        "independent verification unless a tool or source supports it. "
+        "comes from. A user-reported measurement is observed evidence, "
+        "with its source identified as user-provided; this does not mean "
+        "it has been independently verified. Treat a user-provided expected "
+        "output as a documented reference value for classification purposes, "
+        "while retaining source 'user-provided'; this does not imply external "
+        "documentation or independent verification. Use estimated only for "
+        "modeled or calculated values, such as a weather-based generation "
+        "estimate. Do not create a separate estimated evidence item merely "
+        "to restate a comparison already reported by the user. Use documented "
+        "for facts supported by retrieved manuals, SOPs, or other "
+        "documentation when those are the source. Never imply independent "
+        "verification unless a tool or source supports it. "
 
         "Every root-cause hypothesis must include specific supporting "
         "evidence in its evidence field, drawn from evidence provided "
@@ -118,7 +126,7 @@ solar_agent = Agent(
         "additional measurements are needed. Never invent evidence "
         "to satisfy this requirement. "
 
-        "Only when user-provided or tool-provided evidence explicitly establishes that measured generation is below "
+        "When user-provided or tool-provided measured generation is below "
         "expected generation, explicitly state in the summary that measured "
         "generation is below expected generation. Clearly distinguish the "
         "measured value from the expected value; do not invent numerical "
@@ -489,7 +497,45 @@ def validate_solar_assessment(
     ctx: RunContext[SolarAgentDeps],
     assessment: SolarAssessment,
 ) -> SolarAssessment:
-    """Delegate output validation using this run's weather status."""
+    """Validate safety rules and preserve explicit input measurements."""
+    prompt = ctx.prompt if isinstance(ctx.prompt, str) else ""
+    expected_match = re.search(
+        r"\bexpected\s+(?:output|generation)\s*(?:is|of|:|=)?\s*(\d+(?:\.\d+)?)",
+        prompt,
+        re.IGNORECASE,
+    )
+    measured_match = re.search(
+        r"\bmeasured\s+(?:output|generation)\s*(?:is|of|:|=)?\s*(\d+(?:\.\d+)?)",
+        prompt,
+        re.IGNORECASE,
+    )
+
+    if expected_match and measured_match:
+        assessment_text = " ".join(
+            [
+                assessment.summary,
+                *assessment.limitations,
+                *[item.description for item in assessment.evidence],
+                *[item.action for item in assessment.recommendations],
+                *[
+                    f"{hypothesis.cause} {hypothesis.reasoning}"
+                    for hypothesis in assessment.root_cause_hypotheses
+                ],
+            ]
+        )
+        missing_values = [
+            value
+            for value in (expected_match.group(1), measured_match.group(1))
+            if value not in assessment_text
+        ]
+        if missing_values:
+            raise ModelRetry(
+                "Preserve both numeric values explicitly supplied in the "
+                "question. Include the expected and measured output values "
+                "in the assessment before drawing conclusions. Missing "
+                f"value(s): {', '.join(missing_values)}."
+            )
+
     return validate_solar_assessment_rules(
         assessment,
         weather_status=ctx.deps.weather_status,

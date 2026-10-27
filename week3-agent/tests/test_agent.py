@@ -500,3 +500,27 @@ def test_validator_accepts_cautious_below_expected_generation_wording():
     result = validate_solar_assessment_rules(assessment)
 
     assert result.summary == assessment.summary
+
+
+def test_output_validator_retries_when_expected_and_measured_values_are_omitted():
+    from types import SimpleNamespace
+
+    from agent import SolarAgentDeps, validate_solar_assessment
+    from pydantic_ai import ModelRetry
+    from schemas import SolarAssessment
+
+    ctx = SimpleNamespace(
+        prompt=(
+            "Synthetic test case: expected output is 4.0 kW "
+            "and measured output is 2.0 kW during daylight. "
+            "What can we conclude?"
+        ),
+        deps=SolarAgentDeps(),
+    )
+    assessment = SolarAssessment(
+        summary="Measured generation is below expected generation.",
+        limitations=["The specific cause is unknown."],
+    )
+
+    with pytest.raises(ModelRetry, match="Preserve both numeric values"):
+        validate_solar_assessment(ctx, assessment)

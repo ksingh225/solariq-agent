@@ -13,12 +13,12 @@ for path in (WEEK3_APP, WEEK2_APP, REPO_ROOT):
     if path_string not in sys.path:
         sys.path.insert(0, path_string)
 
-from agent import solar_agent
+from agent import SolarAgentDeps, solar_agent
 
 
 async def run_assessment(question: str) -> dict[str, Any]:
     """Run the existing Week 3 agent and return its structured assessment."""
-    result = await solar_agent.run(question)
+    result = await solar_agent.run(question, deps=SolarAgentDeps())
     return result.output.model_dump(mode="json")
 
 
