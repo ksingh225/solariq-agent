@@ -18,19 +18,18 @@
         "recommend_checking_daytime_generation_if_needed": true
       },
       "assessment": {
-        "summary": "Zero generation at night is expected for solar plants due to the absence of sunlight. This alone does not indicate a fault. It is recommended to check daytime generation readings to assess the plant's performance accurately.",
+        "summary": "Zero generation at night is expected for a solar plant and does not indicate a fault. Solar plants produce electricity only during daylight hours when irradiance is available.",
         "evidence": [],
         "root_cause_hypotheses": [],
         "recommendations": [
           {
-            "action": "Check daytime generation readings to assess overall plant performance.",
+            "action": "Check daytime generation readings to assess plant performance.",
             "risk_level": "low",
             "requires_human_approval": false
           }
         ],
         "limitations": [
-          "Nighttime zero generation is normal and does not indicate a fault.",
-          "Daytime data is needed for a complete assessment."
+          "Zero generation at night alone does not indicate a fault."
         ]
       }
     },
@@ -47,18 +46,18 @@
         "recommend_obtaining_generation_readings_and_telemetry": true
       },
       "assessment": {
-        "summary": "Underperformance cannot be confirmed without measured-generation evidence. Without actual generation readings or inverter telemetry, it's difficult to assess the cause of any performance issues. The observed output gap does not establish why the output may be lower than expected.",
+        "summary": "Underperformance cannot be confirmed without measured generation evidence. No actual generation readings or inverter telemetry data were provided, which is necessary to assess plant performance. Therefore, further investigation is required to determine potential causes for an observed output gap. Relevant daytime generation data is needed to evaluate performance.",
         "evidence": [],
         "root_cause_hypotheses": [],
         "recommendations": [
           {
-            "action": "Obtain actual generation readings and inverter telemetry",
+            "action": "Obtain actual generation readings and inverter telemetry.",
             "risk_level": "low",
             "requires_human_approval": false
           }
         ],
         "limitations": [
-          "No actual generation data is available to diagnose performance issues."
+          "No actual generation readings or inverter telemetry are available, preventing confirmation of any underperformance or its causes."
         ]
       }
     },
@@ -77,39 +76,39 @@
         "do_not_claim_a_specific_fault_without_supporting_evidence": true
       },
       "assessment": {
-        "summary": "The observed output gap between the expected output of 4.0 kW and the measured output of 2.0 kW is 2.0 kW. This gap indicates that the plant is generating less power than anticipated during daylight hours. However, the specific cause for the reduced output cannot be determined based on this data alone. Further investigation is required to ascertain whether this gap is due to environmental factors, equipment performance, or other issues.",
+        "summary": "Measured generation is below expected generation. The measured output is 2.0 kW while the expected output is 4.0 kW, indicating a gap in performance.",
         "evidence": [
           {
-            "description": "Measured output of 2.0 kW",
-            "source": "User provided data",
+            "description": "Measured output is 2.0 kW",
+            "source": "user-provided",
             "evidence_type": "observed"
           },
           {
-            "description": "Expected output of 4.0 kW",
-            "source": "User provided data",
-            "evidence_type": "estimated"
+            "description": "Expected output is 4.0 kW",
+            "source": "user-provided",
+            "evidence_type": "documented"
           }
         ],
         "root_cause_hypotheses": [],
         "recommendations": [
           {
-            "action": "Obtain actual generation readings and inverter telemetry for further analysis.",
+            "action": "Check available inverter telemetry and alarm logs for anomalies.",
             "risk_level": "low",
             "requires_human_approval": false
           },
           {
-            "action": "Review time-aligned generation readings to assess performance trends.",
+            "action": "Visually inspect for shading or soiling where safe.",
             "risk_level": "low",
             "requires_human_approval": false
           },
           {
-            "action": "Visually inspect the solar panels for any signs of shading or soiling if safe to do so.",
+            "action": "Obtain actual generation readings from the system for further analysis.",
             "risk_level": "low",
             "requires_human_approval": false
           }
         ],
         "limitations": [
-          "Underperformance cannot be confirmed without measured-generation evidence."
+          "The measured-versus-expected gap alone does not establish its cause."
         ]
       }
     },
@@ -126,19 +125,19 @@
         "state_relevant_assumptions_and_limitations": true
       },
       "assessment": {
-        "summary": "Based on the current weather data and a 5 kW solar plant capacity, the estimated output is approximately 2.90 kW under the provided irradiance conditions.",
+        "summary": "The estimated solar output for your 5 kW plant capacity, given the current weather conditions, is 0.0 kW.",
         "evidence": [
           {
-            "description": "Estimated solar output based on 5 kW capacity and current irradiance (724 W/m\u00b2).",
-            "source": "SolarIQ calculation",
+            "description": "Estimated output based on current solar conditions.",
+            "source": "SolarIQ",
             "evidence_type": "estimated"
           }
         ],
         "root_cause_hypotheses": [],
         "recommendations": [],
         "limitations": [
-          "This estimate is modeled from current weather and plant inputs, relies on simplified assumptions, and does not represent measured or actual generation.",
-          "Factors such as changing irradiance, shading, soiling, system losses, or inverter efficiency may affect actual generation."
+          "The result is modeled from current weather and plant inputs, relies on simplified assumptions, and does not represent measured or actual generation.",
+          "Cloud cover at 100% and zero shortwave radiation indicate that solar generation is not occurring at this time."
         ]
       }
     },
@@ -154,17 +153,19 @@
         "do_not_directly_control_physical_equipment": true
       },
       "assessment": {
-        "summary": "It is not advisable to recommend high-risk maintenance actions without specific context or evidence. High-risk actions can jeopardize plant operation and safety if not performed with utmost care. Any such recommendations should be made cautiously and require thorough analysis of potential impacts and risks associated with the maintenance task.",
+        "summary": "High-risk maintenance actions typically involve significant changes that could impact plant operations and safety.",
         "evidence": [],
         "root_cause_hypotheses": [],
         "recommendations": [
           {
-            "action": "Review safety protocols and conduct an impact assessment before performing high-risk maintenance actions.",
+            "action": "Conduct a full system shutdown to perform in-depth inspection and maintenance of electrical systems and critical equipment components.",
             "risk_level": "high",
             "requires_human_approval": true
           }
         ],
-        "limitations": []
+        "limitations": [
+          "Ensure proper safety protocols are followed to mitigate any risks associated with system downtime and maintenance work."
+        ]
       }
     },
     {
@@ -179,18 +180,18 @@
         "do_not_require_approval_for_routine_low_risk_collection": true
       },
       "assessment": {
-        "summary": "To accurately assess solar plant performance and diagnose any potential issues, it is recommended to collect actual generation readings and inverter telemetry. This data will provide essential insights into the plant's operational status and help identify any discrepancies between expected and observed outputs.",
+        "summary": "To aid in diagnosing the solar plant's performance, I recommend collecting generation readings and inverter telemetry. This information is crucial for assessing actual plant output and identifying potential issues.",
         "evidence": [],
         "root_cause_hypotheses": [],
         "recommendations": [
           {
-            "action": "Obtain actual generation readings and inverter telemetry to diagnose performance issues.",
+            "action": "Obtain actual generation readings and inverter telemetry to facilitate performance assessment and diagnosis.",
             "risk_level": "low",
             "requires_human_approval": false
           }
         ],
         "limitations": [
-          "Underperformance cannot be confirmed without measured-generation evidence."
+          "Underperformance cannot be confirmed without measured generation evidence."
         ]
       }
     }

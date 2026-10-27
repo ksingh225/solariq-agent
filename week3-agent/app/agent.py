@@ -132,7 +132,9 @@ solar_agent = Agent(
         "measured value from the expected value; do not invent numerical "
         "values when they are not provided. Explain that the observed output "
         "gap is separate from its unknown cause. State that the gap alone does not "
-        "establish why output is lower. Include at least one actionable, "
+        "establish why output is lower. Add a non-empty item to the structured "
+        "limitations list explicitly stating that the measured-versus-expected "
+        "gap alone does not establish its cause. Include at least one actionable, "
         "non-invasive diagnostic recommendation, such as reviewing "
         "time-aligned generation readings, checking available inverter "
         "telemetry and alarm logs, and visually inspecting for shading "
@@ -535,6 +537,17 @@ def validate_solar_assessment(
                 "in the assessment before drawing conclusions. Missing "
                 f"value(s): {', '.join(missing_values)}."
             )
+
+    if (
+        expected_match
+        and measured_match
+        and float(measured_match.group(1)) < float(expected_match.group(1))
+        and not assessment.limitations
+    ):
+        raise ModelRetry(
+            "Add an explicit limitation explaining that a measured-versus-expected "
+            "generation gap alone does not establish the cause of the gap."
+        )
 
     return validate_solar_assessment_rules(
         assessment,

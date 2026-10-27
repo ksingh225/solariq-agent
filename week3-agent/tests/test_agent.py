@@ -524,3 +524,45 @@ def test_output_validator_retries_when_expected_and_measured_values_are_omitted(
 
     with pytest.raises(ModelRetry, match="Preserve both numeric values"):
         validate_solar_assessment(ctx, assessment)
+
+
+def test_output_validator_requires_limitation_for_measured_output_gap():
+    from types import SimpleNamespace
+
+    from agent import SolarAgentDeps, validate_solar_assessment
+    from pydantic_ai import ModelRetry
+    from schemas import SolarAssessment
+
+    ctx = SimpleNamespace(
+        prompt=(
+            "Synthetic test case: expected output is 4.0 kW "
+            "and measured output is 2.0 kW during daylight. "
+            "What can we conclude?"
+        ),
+        deps=SolarAgentDeps(),
+    )
+
+    assessment = SolarAssessment(
+        summary=(
+            "Measured generation is 2.0 kW, below expected generation "
+            "of 4.0 kW. The gap alone does not establish its cause."
+        ),
+        evidence=[
+            {
+                "description": "Measured output of 2.0 kW.",
+                "source": "user-provided",
+                "evidence_type": "observed",
+            },
+            {
+                "description": "Expected output of 4.0 kW.",
+                "source": "user-provided",
+                "evidence_type": "documented",
+            },
+        ],
+        root_cause_hypotheses=[],
+        recommendations=[],
+        limitations=[],
+    )
+
+    with pytest.raises(ModelRetry, match="limitation"):
+        validate_solar_assessment(ctx, assessment)
