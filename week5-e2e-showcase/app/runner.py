@@ -20,7 +20,7 @@ for entry in (
     if entry not in sys.path:
         sys.path.insert(0, entry)
 
-from agent import solar_agent
+from agent import SolarAgentDeps, solar_agent
 from showcase import build_showcase_inputs
 
 
@@ -32,7 +32,11 @@ def build_assessment_question(inputs: dict[str, Any]) -> str:
         "not real plant measurements. Identify it as simulated in the "
         "assessment. Do not present it as a real observation.\n"
         "Distinguish simulated telemetry, external weather observations, "
-        "and modeled output estimates. A gap between simulated measured "
+        "and modeled output estimates. Classify every weather-based output "
+        "calculated by SolarIQ as evidence_type estimated, and identify its "
+        "source as Open-Meteo weather data processed by SolarIQ. Never label "
+        "this calculated estimate as user-provided or documented. Preserve "
+        "the estimate as distinct from measured plant generation. A gap between simulated measured "
         "power and estimated output does not establish a real plant fault. "
         "Do not invent missing measurements or unsupported root causes. "
         "If measured generation is missing, do not claim or imply that a "
@@ -71,4 +75,12 @@ async def run_showcase(
         fetch_weather=fetch_weather,
     )
     question = build_assessment_question(inputs.model_dump(mode="json"))
-    return await solar_agent.run(question)
+    if not fetch_weather:
+        weather_status = "not_requested"
+    elif inputs.weather is None:
+        weather_status = "weather_unavailable"
+    else:
+        weather_status = "available"
+
+    deps = SolarAgentDeps(weather_status=weather_status)
+    return await solar_agent.run(question, deps=deps)

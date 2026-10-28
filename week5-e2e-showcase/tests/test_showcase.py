@@ -164,3 +164,24 @@ def test_time_alignment_rejects_invalid_timezone():
 
     assert result["aligned"] is False
     assert result["status"] == "invalid_timestamp_or_timezone"
+
+
+@pytest.mark.asyncio
+async def test_weather_failure_returns_no_estimate(monkeypatch):
+    import httpx
+
+    async def failing_weather():
+        raise httpx.ConnectError("Simulated weather service failure")
+
+    monkeypatch.setattr("weather_client.fetch_solar_weather", failing_weather)
+
+    result = await showcase.build_showcase_inputs(
+        scenario="normal",
+        capacity_kw=100,
+        fetch_weather=True,
+    )
+
+    assert result.weather is None
+    assert result.expected_output_estimate is None
+    assert result.time_alignment["status"] == "weather_unavailable"
+    assert any("Weather retrieval or validation failed" in item for item in result.limitations)

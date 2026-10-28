@@ -149,19 +149,30 @@ async def build_showcase_inputs(
     estimate = None
 
     if fetch_weather:
+        import httpx
         from solar_analytics import estimate_solar_generation
         from weather_client import fetch_solar_weather
 
-        weather = await fetch_solar_weather()
-        irradiance = weather["shortwave_radiation_wm2"]
-        estimate = estimate_solar_generation(
-            capacity_kw=capacity_kw,
-            irradiance_wm2=irradiance,
-        )
-        limitations.append(
-            "Weather-based expected output uses current shortwave radiation "
-            "as an irradiance proxy and assumes 0.80 efficiency."
-        )
+        try:
+            weather = await fetch_solar_weather()
+            irradiance = weather["shortwave_radiation_wm2"]
+            estimate = estimate_solar_generation(
+                capacity_kw=capacity_kw,
+                irradiance_wm2=irradiance,
+            )
+        except (httpx.HTTPError, ValueError) as exc:
+            weather = None
+            estimate = None
+            limitations.append(
+                "Weather retrieval or validation failed; no weather-based "
+                "output estimate was calculated. "
+                f"Failure type: {type(exc).__name__}."
+            )
+        else:
+            limitations.append(
+                "Weather-based expected output uses current shortwave radiation "
+                "as an irradiance proxy and assumes 0.80 efficiency."
+            )
     else:
         limitations.append(
             "Weather retrieval was disabled; no expected-output estimate "
