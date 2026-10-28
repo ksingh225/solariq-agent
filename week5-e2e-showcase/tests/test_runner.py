@@ -226,3 +226,98 @@ def test_runner_marks_offline_weather_as_not_requested(monkeypatch):
     )
 
     assert captured["weather_status"] == "not_requested"
+
+
+def test_offline_instructions_distinguish_not_requested_weather():
+    question = runner.build_assessment_question(
+        {
+            "scenario": "normal",
+            "weather": None,
+            "expected_output_estimate": None,
+        }
+    )
+
+    assert "weather retrieval was deliberately not requested" in question.lower()
+    assert "state this only as a limitation" in question.lower()
+    assert "do not create an evidence item solely to describe missing weather" in question.lower()
+    assert "no weather request was attempted" in question.lower()
+
+
+def test_offline_result_excludes_missing_weather_from_evidence(monkeypatch):
+    async def fake_build_showcase_inputs(**kwargs):
+        class FakeInputs:
+            weather = None
+
+            def model_dump(self, mode="python"):
+                return {
+                    "scenario": kwargs["scenario"],
+                    "capacity_kw": kwargs["capacity_kw"],
+                    "simulated_telemetry": {
+                        "source": "simulated",
+                        "is_simulated": True,
+                        "measured_power_kw": 25,
+                    },
+                    "weather": None,
+                    "expected_output_estimate": None,
+                }
+
+        return FakeInputs()
+
+    async def fake_agent_run(question, deps):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            output=SimpleNamespace(
+                summary="Performance cannot be confirmed.",
+                evidence=[
+                    SimpleNamespace(
+                        description=(
+                            "No weather observation is available; "
+                            "no expected output estimate was calculated."
+                        ),
+                        source="simulated",
+                        evidence_type="documented",
+                    ),
+                    SimpleNamespace(
+                        description="Simulated measured power is 25 kW.",
+                        source="simulated",
+                        evidence_type="observed",
+                    ),
+                ],
+                root_cause_hypotheses=[],
+                recommendations=[],
+                limitations=[
+                    "Weather retrieval was disabled; no estimate was calculated."
+                ],
+                model_dump=lambda: {
+                    "summary": "Performance cannot be confirmed.",
+                    "evidence": [],
+                    "root_cause_hypotheses": [],
+                    "recommendations": [],
+                    "limitations": [
+                        "Weather retrieval was disabled; no estimate was calculated."
+                    ],
+                },
+            )
+        )
+
+    monkeypatch.setattr(runner, "build_showcase_inputs", fake_build_showcase_inputs)
+    monkeypatch.setattr(runner.solar_agent, "run", fake_agent_run)
+
+    result = asyncio.run(
+        runner.run_showcase(
+            scenario="potential_output_gap",
+            capacity_kw=100,
+            fetch_weather=False,
+        )
+    )
+
+    descriptions = [item.description.lower() for item in result.output.evidence]
+    assert not any("no weather observation is available" in item for item in descriptions)
+    assert any("simulated measured power" in item for item in descriptions)
+    assert any("weather retrieval was disabled" in item.lower()
+               for item in result.output.limitations)
+    assert "no weather-based expected-output estimate was calculated" in (
+        result.output.summary.lower()
+    )
+    assert "below an expected estimate" not in result.output.summary.lower()

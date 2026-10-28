@@ -24,8 +24,26 @@ from agent import SolarAgentDeps, solar_agent
 from showcase import build_showcase_inputs
 
 
-def build_assessment_question(inputs: dict[str, Any]) -> str:
+def build_assessment_question(
+    inputs: dict[str, Any],
+    weather_status: str = "not_requested",
+) -> str:
     """Create an evidence-labelled request from the prepared input bundle."""
+    offline_weather_instruction = ""
+    if weather_status == "not_requested":
+        offline_weather_instruction = (
+            "Weather retrieval was deliberately not requested. State this only "
+            "as a limitation, and do not create an evidence item solely to "
+            "describe missing weather. No weather request was attempted and "
+            "no weather-based output estimate was calculated. "
+        )
+    elif weather_status == "weather_unavailable":
+        offline_weather_instruction = (
+            "Weather retrieval was attempted but no weather result was "
+            "available. State this as a limitation, and do not create an "
+            "evidence item solely to describe missing weather. Do not invent "
+            "weather observations or a weather-based output estimate. "
+        )
     return (
         "Assess this SolarIQ demonstration using only the evidence below.\n"
         "IMPORTANT: all plant telemetry is synthetic demonstration data, "
@@ -56,6 +74,7 @@ def build_assessment_question(inputs: dict[str, Any]) -> str:
         "from unaligned observations. "
         "High- and critical-risk recommendations must require human "
         "approval. Never directly control equipment.\n\n"
+        f"{offline_weather_instruction}"
         "Prepared demonstration evidence (JSON):\n"
         f"{inputs}"
     )
@@ -74,7 +93,6 @@ async def run_showcase(
         plant_id=plant_id,
         fetch_weather=fetch_weather,
     )
-    question = build_assessment_question(inputs.model_dump(mode="json"))
     if not fetch_weather:
         weather_status = "not_requested"
     elif inputs.weather is None:
@@ -82,5 +100,36 @@ async def run_showcase(
     else:
         weather_status = "available"
 
+    question = build_assessment_question(
+        inputs.model_dump(mode="json"),
+        weather_status=weather_status,
+    )
     deps = SolarAgentDeps(weather_status=weather_status)
-    return await solar_agent.run(question, deps=deps)
+    result = await solar_agent.run(question, deps=deps)
+
+    if weather_status == "not_requested":
+        missing_weather_phrases = (
+            "no weather observation",
+            "weather retrieval was disabled",
+            "weather is unavailable",
+            "weather unavailable",
+            "no weather data",
+            "no expected output estimate",
+            "no weather-based output estimate",
+        )
+        result.output.evidence = [
+            item
+            for item in result.output.evidence
+            if not any(
+                phrase in item.description.lower()
+                for phrase in missing_weather_phrases
+            )
+        ]
+        result.output.summary = (
+            "Performance cannot be confirmed from this offline demonstration. "
+            "The available plant telemetry is simulated, and no weather-based "
+            "expected-output estimate was calculated. Obtain actual generation "
+            "readings and inverter telemetry before assessing plant performance."
+        )
+
+    return result

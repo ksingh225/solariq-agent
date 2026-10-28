@@ -164,4 +164,13 @@ python -m pytest week3-agent/tests week4-evaluation/tests week5-e2e-showcase/tes
 
 
 
-Week 5 showcase implementation and initial regression tests are in place. Final validation, timestamp interpretation, and end-to-end demonstration review remain to be confirmed.
+The Week 5 offline demonstration has been validated end to end. In offline mode, the assessment identifies plant telemetry as simulated, excludes missing weather from evidence, avoids unsupported root-cause claims, and states that no weather-based expected-output estimate was calculated.
+
+Validation results:
+- Week 5 tests: 27 passed.
+- Combined Week 3, Week 4, and Week 5 regression tests: 97 passed.
+- Offline `potential_output_gap` CLI scenario: completed successfully.
+
+The combined regression run emitted 10 dependency deprecation warnings and had no test failures.
+
+Limitations remain: telemetry is simulated, expected-generation estimates are simplified, weather retrieval depends on an external service, and this showcase does not establish a production-ready plant-monitoring integration.
